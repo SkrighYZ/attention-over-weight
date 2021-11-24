@@ -138,6 +138,7 @@ class AttnOverWeight(nn.Module):
     def __init__(self, x_channels, wb_channels, attn_dim):
         super(AttnOverWeight, self).__init__()
 
+        self.attn_dim = attn_dim
         self.fc_q = nn.Linear(x_channels, attn_dim)
         self.fc_k = nn.Linear(wb_channels, attn_dim)
         self.fc_v = nn.Linear(wb_channels, attn_dim)
@@ -146,13 +147,13 @@ class AttnOverWeight(nn.Module):
 
     # Suppose x, wb is flattened
     def forward(self, x, wb):
-        q = self.fc_q(x)
-        k = self.fc_k(wb).unsqueeze(0)
-        v = self.fc_v(wb).unsqueeze(0)
+        q = self.fc_q(x)               # (N, C)
+        k = self.fc_k(wb).unsqueeze(0)  # (1, C)
+        v = self.fc_v(wb).unsqueeze(0)  # (1, C)
 
-        attn_score = F.softmax(torch.matmul(q, k))
-        attn = torch.matmul(attn_score, v).squeeze(0)
-        mask = self.fc_o(attn)
+        attn_score = F.softmax(torch.bmm(q.unsqueeze(2) , k.unsqueeze(1)) / torch.sqrt(self.attn_dim))  # (N, C, C)
+        attn = torch.bmm(attn_score, v.unsqueeze(2)).squeeze(2)     # (N, C)
+        mask = self.fc_o(attn.mean(dim=0))
 
         masked_wb = self.gamma * wb + mask * wb
 
