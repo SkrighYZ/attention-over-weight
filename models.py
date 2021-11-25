@@ -99,7 +99,7 @@ class ResNet(nn.Module):
         blocks = [block, block, block]
         factor = config_task.factor
         self.in_planes = int(32*factor)
-        self.pre_layers_conv = conv_task(3,int(32*factor), 1, nb_tasks) 
+        self.pre_layers_conv = conv_task(3, int(32*factor), 1, nb_tasks) 
         self.layer1 = self._make_layer(blocks[0], int(64*factor), nblocks[0], stride=2, nb_tasks=nb_tasks)
         self.layer2 = self._make_layer(blocks[1], int(128*factor), nblocks[1], stride=2, nb_tasks=nb_tasks)
         self.layer3 = self._make_layer(blocks[2], int(256*factor), nblocks[2], stride=2, nb_tasks=nb_tasks)
