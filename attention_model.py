@@ -30,6 +30,9 @@ class MaskedConv2d(nn.Module):
         if groups != 1:
             raise ValueError('Only supports group size 1 for now.')
 
+        if bias:
+            raise ValueError('Only supports 0 bias for now. The BN layer handles bias.')
+
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.kernel_size = kernel_size
@@ -57,7 +60,13 @@ class MaskedConv2d(nn.Module):
         task = config_task.task
 
         x = input.flatten(start_dim=1)
-        wb = torch.cat([self.weight.flatten(), self.bias]).unsqueeze(0)
+
+        # Attention should be performed separately on weights and bias
+        # But we don't have bias anyways for now, so the first if will never be called
+        if self.bias:
+            wb = torch.cat([self.weight.flatten(), self.bias]).unsqueeze(0)
+        else:
+            wb = self.weight.flatten()
         masked_wb = self.attns[task](x, wb)
 
         batch_size = x.size(0)
@@ -138,9 +147,11 @@ class AttnOverWeight(nn.Module):
         attn = torch.bmm(attn_score, v.unsqueeze(2)).squeeze(2)     # (N, attn_dim)
         mask = self.fc_o(attn)     # (N, wb_channels)
 
+        mask_normalized = (mask - torch.min(mask, dim=1, keepdim=True)) / torch.max(mask, dim=1, keepdim=True)
+
         batch_size = x.size(0)
         expanded_wb = wb.unsqueeze(0).repeat(batch_size, 1)
-        masked_wb = self.gamma * expanded_wb + mask * expanded_wb   # (N, wb_channels)
+        masked_wb = self.gamma * expanded_wb + mask_normalized * expanded_wb   # (N, wb_channels)
 
         return masked_wb
 
