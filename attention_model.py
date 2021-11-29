@@ -12,6 +12,15 @@ from torch.nn.parameter import Parameter
 import config_task
 import math
 
+def weight_init(m):
+    if isinstance(m, (torch.nn.Linear, torch.nn.Conv2d, torch.nn.Parameter)):
+        torch.nn.init.xavier_normal_(m.weight.data)
+        if m.bias is not None:
+            torch.nn.init.constant_(m.bias.data, 0.1)
+    elif isinstance(m, (torch.nn.BatchNorm2d, torch.nn.BatchNorm1d)):
+        m.weight.data.uniform_()
+        m.bias.data.zero_()
+
 
 class MaskedConv2d(nn.Module):
     """Modified conv with masks for weights."""
@@ -106,25 +115,6 @@ class MaskedConv2d(nn.Module):
         s += ')'
         return s.format(name=self.__class__.__name__, **self.__dict__)
 
-    def _apply(self, fn):
-        for module in self.children():
-            module._apply(fn)
-
-        for param in self._parameters.values():
-            if param is not None:
-                # Variables stored in modules are graph leaves, and we don't
-                # want to create copy nodes, so we have to unpack the data.
-                param.data = fn(param.data)
-                if param._grad is not None:
-                    param._grad.data = fn(param._grad.data)
-
-        for key, buf in self._buffers.items():
-            if buf is not None:
-                self._buffers[key] = fn(buf)
-
-        self.weight.data = fn(self.weight.data)
-        if self.bias is not None and self.bias.data is not None:
-            self.bias.data = fn(self.bias.data)
 
 class AttnOverWeight(nn.Module):
     def __init__(self, x_channels, wb_channels, attn_dim):
@@ -145,13 +135,15 @@ class AttnOverWeight(nn.Module):
 
         attn_score = F.softmax(torch.bmm(q.unsqueeze(2) , k.unsqueeze(1)) / torch.sqrt(self.attn_dim))  # (N, attn_dim, attn_dim)
         attn = torch.bmm(attn_score, v.unsqueeze(2)).squeeze(2)     # (N, attn_dim)
-        mask = self.fc_o(attn)     # (N, wb_channels)
+        weighted_wb = self.fc_o(attn)     # (N, wb_channels)
 
-        mask_normalized = (mask - torch.min(mask, dim=1, keepdim=True)) / torch.max(mask, dim=1, keepdim=True)
+        #mask_normalized = (mask - torch.min(mask, dim=1, keepdim=True)) / torch.max(mask, dim=1, keepdim=True)
 
         batch_size = x.size(0)
         expanded_wb = wb.unsqueeze(0).repeat(batch_size, 1)
-        masked_wb = self.gamma * expanded_wb + mask_normalized * expanded_wb   # (N, wb_channels)
+
+        #masked_wb = self.gamma * expanded_wb + mask_normalized * expanded_wb  
+        masked_wb = self.gamma * expanded_wb + weighted_wb		# (N, wb_channels)
 
         return masked_wb
 
@@ -202,13 +194,16 @@ class ResNet(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool2d(1)
         self.linears = nn.ModuleList([nn.Linear(int(256*factor), num_classes[i]) for i in range(nb_tasks)])         
         
+        # for m in self.modules():
+        #     if isinstance(m, nn.Conv2d):
+        #         n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+        #         m.weight.data.normal_(0, math.sqrt(2. / n))
+        #     elif isinstance(m, nn.BatchNorm2d):
+        #         m.weight.data.fill_(1)
+        #         m.bias.data.zero_()
+
         for m in self.modules():
-            if isinstance(m, MaskedConv2d):
-                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                m.weight.data.normal_(0, math.sqrt(2. / n))
-            elif isinstance(m, nn.BatchNorm2d):
-                m.weight.data.fill_(1)
-                m.bias.data.zero_()
+        	m.apply(weight_init)
     
     def _make_layer(self, block, planes, nblocks, stride=1, nb_tasks=1):
         layers = []
