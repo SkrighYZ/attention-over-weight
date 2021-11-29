@@ -54,48 +54,34 @@ class MaskedConv2d(nn.Module):
 
         # weight and bias are no longer Parameters.
         self.weight = Variable(torch.Tensor(out_channels, in_channels, *kernel_size), requires_grad=False)
-        if bias:
-            self.bias = Variable(torch.Tensor(out_channels), requires_grad=False)
-        else:
-            self.register_parameter('bias', None)
+        self.register_parameter('bias', None)
 
-        x_channels = in_size*in_size*in_channels
-        w_channels = torch.numel(self.weight) + out_channels if bias else torch.numel(self.weight)
+        w_channels = torch.numel(self.weight)
         self.attn_dim = num_weights // 8
-        self.attns = nn.ModuleList([AttnOverWeight(x_channels, w_channels, self.attn_dim) for i in range(nb_tasks)])
+        self.attns = nn.ModuleList([AttnOverWeight(self.in_channels, w_channels, self.attn_dim) for i in range(nb_tasks)])
 
     def forward(self, input):
 
         task = config_task.task
 
-        x = input.flatten(start_dim=1)
+        batch_size = x.size(0)
+
+        x = input.view(batch_size, self.in_channels, -1).permute(0, 2, 1)
 
         # Attention should be performed separately on weights and bias
-        # But we don't have bias anyways for now, so the first if will never be called
-        if self.bias:
-            wb = torch.cat([self.weight.flatten(), self.bias]).unsqueeze(0)
-        else:
-            wb = self.weight.flatten()
-        masked_wb = self.attns[task](x, wb)
-
-        batch_size = x.size(0)
-        if self.bias:
-            masked_w = masked_wb[:, :-self.out_channels].reshape(batch_size, self.out_channels, self.in_channels, *self.kernel_size)
-            masked_b = masked_wb[:, -self.out_channels:]
-        else:
-            masked_w = masked_wb.reshape(batch_size, self.out_channels, self.in_channels, *self.kernel_size)
-            masked_b = None
+        # We don't have bias for now
+        w = self.weight.flatten()
+        masked_w = self.attns[task](x, w).view(batch_size, self.out_channels, self.in_channels, *self.kernel_size)
 
         # move batch dim into out_channels
         weights = masked_w.unsqueeze(0).view(-1, self.in_channels, *self.kernel_size) # (N*C_out, C_in, K_h, K_w)
         # move batch dim into in_channels
         x = x.view(1, -1, x.size(2), x.size(3)) # (1, N*C_in, H, W)
-        # move batch dim into out_channels
-        bias = masked_b.flatten() if self.bias else None  # (N*C_out, )
 
-        out_grouped = F.conv2d(input, weights, bias, self.stride, self.padding, self.dilation, groups=batch_size)
+        out_grouped = F.conv2d(input, weights, None, self.stride, self.padding, self.dilation, groups=batch_size)
 
         return out_grouped.view(batch_size, self.out_channels, out_grouped.size(2), out_grouped.size(3))
+
 
     def __repr__(self):
         s = ('{name} ({in_channels}, {out_channels}, kernel_size={kernel_size}'
@@ -117,35 +103,41 @@ class MaskedConv2d(nn.Module):
 
 
 class AttnOverWeight(nn.Module):
-    def __init__(self, x_channels, wb_channels, attn_dim):
+    def __init__(self, x_channels, w_channels, attn_dim):
         super(AttnOverWeight, self).__init__()
 
         self.attn_dim = attn_dim
+
+        # May change to 1x1 Conv later
         self.fc_q = nn.Linear(x_channels, attn_dim)
-        self.fc_k = nn.Linear(wb_channels, attn_dim)
-        self.fc_v = nn.Linear(wb_channels, attn_dim)
-        self.fc_o = nn.Linear(attn_dim, wb_channels)
+        self.fc_k = nn.Linear(w_channels, attn_dim)
+        self.fc_v = nn.Linear(w_channels, attn_dim)
+        self.fc_o = nn.Linear(attn_dim, w_channels)
         self.gamma = nn.Parameter(torch.randn(1))
 
-    # Suppose x, wb is flattened
-    def forward(self, x, wb):
-        q = self.fc_q(x)               # (N, attn_dim)
-        k = self.fc_k(wb).unsqueeze(0)  # (1, attn_dim)
-        v = self.fc_v(wb).unsqueeze(0)  # (1, attn_dim)
+    # x shape - (N, HW, x_channels)
+    # w shape - (N, w_channels)
+    def forward(self, x, w):
+        q = self.fc_q(x)               # (N, HW, attn_dim)
+        k = self.fc_k(w).unsqueeze(0)  # (1, attn_dim)
+        v = self.fc_v(w).unsqueeze(0)  # (1, attn_dim)
 
-        attn_score = F.softmax(torch.bmm(q.unsqueeze(2) , k.unsqueeze(1)) / torch.sqrt(self.attn_dim))  # (N, attn_dim, attn_dim)
-        attn = torch.bmm(attn_score, v.unsqueeze(2)).squeeze(2)     # (N, attn_dim)
-        weighted_wb = self.fc_o(attn)     # (N, wb_channels)
+        attn_score = F.softmax(torch.bmm(q, k.unsqueeze(1)) / torch.sqrt(self.attn_dim))  # (N, HW, 1)
+        attn_out = torch.bmm(attn_score, v.unsqueeze(1)).squeeze(2)     # (N, HW, attn_dim)
+        
+        # Currently taking a mean along HW; may improve later
+        weighted_w = self.fc_o(attn_out.mean(dim=1))     # (N, w_channels)
 
         #mask_normalized = (mask - torch.min(mask, dim=1, keepdim=True)) / torch.max(mask, dim=1, keepdim=True)
 
         batch_size = x.size(0)
-        expanded_wb = wb.unsqueeze(0).repeat(batch_size, 1)
+        expanded_w = w.unsqueeze(0).repeat(batch_size, 1)
 
-        #masked_wb = self.gamma * expanded_wb + mask_normalized * expanded_wb  
-        masked_wb = self.gamma * expanded_wb + weighted_wb		# (N, wb_channels)
+        #masked_w = self.gamma * expanded_w + mask_normalized * expanded_w 
 
-        return masked_wb
+        masked_w = self.gamma * expanded_w + weighted_w		# (N, w_channels)
+
+        return masked_w
 
 class conv_task(nn.Module):
     
