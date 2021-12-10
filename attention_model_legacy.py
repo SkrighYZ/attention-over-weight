@@ -110,28 +110,32 @@ class AttnOverWeight(nn.Module):
 
         # May change to 1x1 Conv later
         self.fc_q = nn.Linear(x_channels, attn_dim)
-        self.fc_k = nn.Linear(1, attn_dim)
-        self.fc_v = nn.Linear(1, attn_dim)
-        self.fc_o = nn.Linear(attn_dim, 1)
+        self.fc_k = nn.Linear(w_channels, attn_dim)
+        self.fc_v = nn.Linear(w_channels, attn_dim)
+        self.fc_o = nn.Linear(attn_dim, w_channels)
         self.gamma = nn.Parameter(torch.randn(1))
 
     # x shape - (N, HW, x_channels)
     # w shape - (N, w_channels)
     def forward(self, x, w):
-        q = self.fc_q(x)                # (N, HW, attn_dim)
-        k = self.fc_k(w.unsqueeze(2))   # (N, w_channels, attn_dim)
-        v = self.fc_v(w.unsqueeze(2))   # (N, w_channels, attn_dim)
+        q = self.fc_q(x)               # (N, HW, attn_dim)
+        k = self.fc_k(w).expand_as(q[:, 0:1, :])  # (N, 1, attn_dim)
+        v = self.fc_v(w).expand_as(q[:, 0:1, :])  # (N, 1, attn_dim)
 
-        attn_score = torch.softmax(torch.bmm(q, k.transpose(1, 2))/torch.sqrt(self.attn_dim), dim=2)  # (N, HW, w_channels)
-
-        # Currently taking a mean along HW; may improve later
-        attn_out = attn_score.mean(dim=1).unsqueeze(2) * v   # (N, w_channels, attn_dim)
+        attn_score = torch.softmax(torch.bmm(q, k.transpose(1, 2))/torch.sqrt(self.attn_dim), dim=2)  # (N, HW, 1)
+        attn_out = torch.bmm(attn_score, v)    # (N, HW, attn_dim)
         
-        weighted_w = self.fc_o(attn_out).squeeze(2)         # (N, w_channels)
+        # Currently taking a mean along HW; may improve later
+        weighted_w = self.fc_o(attn_out.mean(dim=1))     # (N, w_channels)
 
-        expanded_w = w.expand_as(weighted_w)                # (N, w_channels)
+        #mask_normalized = (mask - torch.min(mask, dim=1, keepdim=True)) / torch.max(mask, dim=1, keepdim=True)
 
-        masked_w = expanded_w + self.gamma * weighted_w		# (N, w_channels)
+        batch_size = x.size(0)
+        expanded_w = w.expand_as(weighted_w)
+
+        #masked_w = self.gamma * expanded_w + mask_normalized * expanded_w 
+
+        masked_w = self.gamma * expanded_w + weighted_w		# (N, w_channels)
 
         return masked_w
 
