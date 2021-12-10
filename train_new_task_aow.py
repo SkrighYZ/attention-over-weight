@@ -10,7 +10,8 @@ import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
 import torchvision
 import torchvision.transforms as transforms
-import models
+import attention_model
+from attention_model import MaskedConv2d, AttnOverWeight, ResNet
 import os
 import time
 import argparse
@@ -73,7 +74,7 @@ args.num_classes = num_classes
 print('==> Resuming from checkpoint..')
 checkpoint = torch.load(args.source)
 net_old = checkpoint['net']
-net = models.resnet26(num_classes)
+net = attention_model.resnet26(num_classes)
 store_data = []
 for name, m in net_old.named_modules():
     if isinstance(m, nn.Conv2d) and (m.kernel_size[0]==3):
