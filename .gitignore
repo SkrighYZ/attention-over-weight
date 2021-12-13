@@ -2,3 +2,4 @@
 ex_att1.py
 ex_att2.py
 __pycache__/
+*.pyc
