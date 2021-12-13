@@ -29,11 +29,6 @@ class MaskedConv2d(nn.Module):
                  padding=0, dilation=1, groups=1, bias=True,
                  in_size=0, nb_tasks=10):
         super(MaskedConv2d, self).__init__()
-        kernel_size = _pair(kernel_size)
-        stride = _pair(stride)
-        padding = _pair(padding)
-        dilation = _pair(dilation)
-        self.in_size = in_size
 
 
         if groups != 1:
@@ -44,20 +39,21 @@ class MaskedConv2d(nn.Module):
 
         self.in_channels = in_channels
         self.out_channels = out_channels
-        self.kernel_size = kernel_size
-        self.stride = stride
-        self.padding = padding
-        self.dilation = dilation
+        self.kernel_size = (kernel_size, kernel_size)
+        self.stride = (stride, stride)
+        self.padding = (padding, padding)
+        self.dilation = (dilation, dilation)
         self.transposed = False
-        self.output_padding = _pair(0)
+        self.output_padding = (0, 0)
         self.groups = groups     
+        self.in_size = in_size
 
         # weight and bias are no longer Parameters.
-        self.weight = Variable(torch.Tensor(out_channels, in_channels, *kernel_size), requires_grad=False)
+        self.weight = Variable(torch.Tensor(self.out_channels, self.in_channels, *self.kernel_size), requires_grad=False)
         self.register_parameter('bias', None)
 
         w_channels = torch.numel(self.weight)
-        self.attn_dim = num_weights // 8
+        self.attn_dim = self.in_channels    # may try different values later
         self.attns = nn.ModuleList([AttnOverWeight(self.in_channels, w_channels, self.attn_dim) for i in range(nb_tasks)])
 
     def forward(self, input):
@@ -131,7 +127,7 @@ class AttnOverWeight(nn.Module):
 
         expanded_w = w.expand_as(weighted_w)                # (N, w_channels)
 
-        masked_w = expanded_w + self.gamma * weighted_w		# (N, w_channels)
+        masked_w = expanded_w + self.gamma * weighted_w        # (N, w_channels)
 
         return masked_w
 
@@ -183,7 +179,7 @@ class ResNet(nn.Module):
         self.linears = nn.ModuleList([nn.Linear(int(256*factor), num_classes[i]) for i in range(nb_tasks)])         
 
         for m in self.modules():
-        	m.apply(weight_init)
+            m.apply(weight_init)
     
     def _make_layer(self, block, planes, nblocks, stride=1, nb_tasks=1):
         layers = []
@@ -194,7 +190,7 @@ class ResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
-    	task = config_task.task
+        task = config_task.task
         x = F.relu(self.pre_layers_conv(x))
         x = self.layer1(x)
         x = self.layer2(x)
