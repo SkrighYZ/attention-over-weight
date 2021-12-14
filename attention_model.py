@@ -157,10 +157,14 @@ class BasicBlock(nn.Module):
         
     def forward(self, x):
         residual = x
+        print('x, {}'.format(x.size()))
         y = F.relu(self.conv1(x))
+        print('conv1, {}'.format(y.size()))
         y = self.conv2(y)
+        print('conv2, {}'.format(y.size()))
         residual = self.avgpool(x)
         residual = torch.cat((residual, residual*0), 1)
+        print('residual, {}'.format(residual.size()))
         out = F.relu(y+residual)
         return out
 
