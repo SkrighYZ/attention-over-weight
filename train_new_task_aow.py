@@ -11,6 +11,7 @@ import torch.backends.cudnn as cudnn
 import torchvision
 import torchvision.transforms as transforms
 import attention_model
+import models
 from attention_model import MaskedConv2d, AttnOverWeight, ResNet
 import os
 import time
@@ -67,22 +68,21 @@ args.num_classes = num_classes
 
 
 ##########################################################################
-# Keshaw: Look here
-##########################################################################
 
 # Load checkpoint and initialize the networks with the weights of a pretrained network
 print('==> Resuming from checkpoint..')
 checkpoint = torch.load(args.source)
 net_old = checkpoint['net']
-net = attention_model.resnet26(num_classes)
 store_data = []
 for name, m in net_old.named_modules():
     if isinstance(m, nn.Conv2d) and (m.kernel_size[0]==3):
         store_data.append(m.weight.data)
 
+net = attention_model.resnet26(num_classes)
 element = 0
 for name, m in net.named_modules():
-    if isinstance(m, nn.Conv2d) and (m.kernel_size[0]==3):
+    print(name, m)
+    if isinstance(m, nn.MaskedConv2d) and (m.kernel_size[0]==3):
         m.weight.data = store_data[element]
         element += 1
 
@@ -100,24 +100,16 @@ for name, m in net_old.named_modules():
         store_data_rm.append(m.running_mean)
         store_data_rv.append(m.running_var)
 
-# Special case to copy the weight for the BN layers when the target and source networks have not the same number of BNs
-import re
-condition_bn = 'noproblem'
-if len(names) != 51 and args.mode == 'series_adapters':
-    condition_bn ='bns.....conv'
 
 for id_task in range(len(num_classes)):
     element = 0
     for name, m in net.named_modules():
-        if isinstance(m, nn.BatchNorm2d) and 'bns.'+str(id_task) in name and not re.search(condition_bn,name):
+        if isinstance(m, nn.BatchNorm2d) and 'bns.'+str(id_task) in name:
                 m.weight.data = store_data[element].clone()
                 m.bias.data = store_data_bias[element].clone()
                 m.running_var = store_data_rv[element].clone()
                 m.running_mean = store_data_rm[element].clone()
                 element += 1
-
-#net.linears[0].weight.data = net_old.linears[0].weight.data
-#net.linears[0].bias.data = net_old.linears[0].bias.data
 
 del net_old
 
