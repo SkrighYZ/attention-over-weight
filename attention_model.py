@@ -56,11 +56,11 @@ class MaskedConv2d(nn.Module):
         self.attn_dim = self.in_channels    # may try different values later
         self.attns = nn.ModuleList([AttnOverWeight(self.in_channels, w_channels, self.attn_dim) for i in range(nb_tasks)])
 
-    def forward(self, x):
+    def forward(self, input):
 
         task = config_task.task
 
-        batch_size = x.size(0)
+        batch_size = input.size(0)
 
         x = input.view(batch_size, self.in_channels, -1).permute(0, 2, 1)
 
