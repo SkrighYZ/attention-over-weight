@@ -81,7 +81,7 @@ net = attention_model.resnet26(num_classes)
 element = 0
 for name, m in net.named_modules():
     print(name, m)
-    if isinstance(m, nn.MaskedConv2d) and (m.kernel_size[0]==3):
+    if isinstance(m, MaskedConv2d) and (m.kernel_size[0]==3):
         m.weight.data = store_data[element]
         element += 1
 
