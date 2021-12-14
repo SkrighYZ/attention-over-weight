@@ -37,6 +37,8 @@ parser.add_argument('--datadir', default='../data/decathlon-1.0/', help='folder 
 parser.add_argument('--imdbdir', default='../data/decathlon-1.0/annotations/', help='annotation folder')
 parser.add_argument('--source', default='../models/pretrained/imnet.t7', type=str, help='Network source')
 parser.add_argument('--seed', default=0, type=int, help='seed')
+parser.add_argument('--batch_size', default=128, type=int, help='batch size')
+parser.add_argument('--eval_batch_size', default=100, type=int, help='eval batch size')
 parser.add_argument('--factor', default='1.', type=float, help='Width factor of the network')
 args = parser.parse_args()
 
@@ -62,7 +64,7 @@ if not os.path.isdir(args.svdir):
 #####################################
 
 # Prepare data loaders
-train_loaders, val_loaders, num_classes = imdbfolder.prepare_data_loaders(args.dataset,args.datadir,args.imdbdir,True)
+train_loaders, val_loaders, num_classes = imdbfolder.prepare_data_loaders(args.batch_size, args.eval_batch_size, args.dataset,args.datadir,args.imdbdir,True)
 args.num_classes = num_classes
 
 
