@@ -93,7 +93,7 @@ names = []
 
 for name, m in net_old.named_modules():
     if isinstance(m, nn.BatchNorm2d) and 'bns.' in name:
-        print(name, m)
+        print(name)
         names.append(name)
         store_data.append(m.weight.data)
         store_data_bias.append(m.bias.data)
