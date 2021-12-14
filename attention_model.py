@@ -67,6 +67,7 @@ class MaskedConv2d(nn.Module):
         # Attention should be performed separately on weights and bias
         # We don't have bias for now
         w = self.weight.flatten()
+        print(w.shape())
         masked_w = self.attns[task](x, w).view(batch_size, self.out_channels, self.in_channels, *self.kernel_size)
 
         # move batch dim into out_channels
@@ -112,11 +113,11 @@ class AttnOverWeight(nn.Module):
         self.gamma = nn.Parameter(torch.randn(1))
 
     # x shape - (N, HW, x_channels)
-    # w shape - (N, w_channels, 1)
+    # w shape - (w_channels, 1)
     def forward(self, x, w):
         q = self.fc_q(x)     # (N, HW, attn_dim)
-        k = self.fc_k(w)    # (N, w_channels, attn_dim)
-        v = self.fc_v(w)   # (N, w_channels, attn_dim)
+        k = self.fc_k(w)    # (w_channels, attn_dim)
+        v = self.fc_v(w)   # (w_channels, attn_dim)
 
         attn_score = torch.softmax(torch.bmm(q, k.transpose(1, 2))/torch.sqrt(self.attn_dim), dim=2)  # (N, HW, w_channels)
 
