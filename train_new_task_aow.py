@@ -25,17 +25,17 @@ import config_task
 import utils_pytorch
 import sgd
 
-parser = argparse.ArgumentParser(description='PyTorch Residual Adapters training')
+parser = argparse.ArgumentParser(description='PyTorch Attention Weight Masks')
 parser.add_argument('--dataset', default='cifar100', nargs='+', help='Task(s) to be trained')
 parser.add_argument('--lr', default=0.1, type=float, help='initial learning rate')
 parser.add_argument('--wd', default=1e-4, type=float, help='weight decay for the classification layer')
 parser.add_argument('--nb_epochs', default=120, type=int, help='nb epochs')
 parser.add_argument('--step1', default=80, type=int, help='nb epochs before first lr decrease')
 parser.add_argument('--step2', default=100, type=int, help='nb epochs before second lr decrease')
-parser.add_argument('--expdir', default='/scratch/shared/nfs1/srebuffi/exp/dem_learning/tmp/', help='Save folder')
-parser.add_argument('--datadir', default='/scratch/local/ramdisk/srebuffi/decathlon/', help='folder containing data folder')
-parser.add_argument('--imdbdir', default='/scratch/local/ramdisk/srebuffi/decathlon/annotations/', help='annotation folder')
-parser.add_argument('--source', default='/scratch/shared/nfs1/srebuffi/exp/dem_learning/C100_alone/checkpoint/ckptpost11bnresidual11cifar1000.000180607060.t7', type=str, help='Network source')
+parser.add_argument('--expdir', default='../results', help='Save folder')
+parser.add_argument('--datadir', default='../data/data', help='folder containing data folder')
+parser.add_argument('--imdbdir', default='../annotation', help='annotation folder')
+parser.add_argument('--source', default='../models/pretrained/imnet.t7', type=str, help='Network source')
 parser.add_argument('--seed', default=0, type=int, help='seed')
 parser.add_argument('--factor', default='1.', type=float, help='Width factor of the network')
 args = parser.parse_args()
