@@ -80,8 +80,8 @@ for name, m in net_old.named_modules():
 net = attention_model.resnet26(num_classes)
 element = 0
 for name, m in net.named_modules():
-    print(name, m)
     if isinstance(m, MaskedConv2d) and (m.kernel_size[0]==3):
+        print(name, m)
         m.weight.data = store_data[element]
         element += 1
 
@@ -93,6 +93,7 @@ names = []
 
 for name, m in net_old.named_modules():
     if isinstance(m, nn.BatchNorm2d) and 'bns.' in name:
+        print(name, m)
         names.append(name)
         store_data.append(m.weight.data)
         store_data_bias.append(m.bias.data)
