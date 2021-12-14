@@ -72,9 +72,9 @@ class MaskedConv2d(nn.Module):
         # move batch dim into out_channels
         weights = masked_w.unsqueeze(0).view(-1, self.in_channels, *self.kernel_size) # (N*C_out, C_in, K_h, K_w)
         # move batch dim into in_channels
-        x = x.view(1, -1, x.size(2), x.size(3)) # (1, N*C_in, H, W)
+        x = input.view(1, -1, input.size(2), input.size(3)) # (1, N*C_in, H, W)
 
-        out_grouped = F.conv2d(input, weights, None, self.stride, self.padding, self.dilation, groups=batch_size)
+        out_grouped = F.conv2d(x, weights, None, self.stride, self.padding, self.dilation, groups=batch_size)
 
         return out_grouped.view(batch_size, self.out_channels, out_grouped.size(2), out_grouped.size(3))
 
