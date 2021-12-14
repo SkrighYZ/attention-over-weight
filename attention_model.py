@@ -112,11 +112,11 @@ class AttnOverWeight(nn.Module):
         self.gamma = nn.Parameter(torch.randn(1))
 
     # x shape - (N, HW, x_channels)
-    # w shape - (N, w_channels)
+    # w shape - (N, w_channels, 1)
     def forward(self, x, w):
-        q = self.fc_q(x)                # (N, HW, attn_dim)
-        k = self.fc_k(w.unsqueeze(2))   # (N, w_channels, attn_dim)
-        v = self.fc_v(w.unsqueeze(2))   # (N, w_channels, attn_dim)
+        q = self.fc_q(x)     # (N, HW, attn_dim)
+        k = self.fc_k(w)    # (N, w_channels, attn_dim)
+        v = self.fc_v(w)   # (N, w_channels, attn_dim)
 
         attn_score = torch.softmax(torch.bmm(q, k.transpose(1, 2))/torch.sqrt(self.attn_dim), dim=2)  # (N, HW, w_channels)
 
