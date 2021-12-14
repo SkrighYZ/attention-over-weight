@@ -40,7 +40,6 @@ parser.add_argument('--seed', default=0, type=int, help='seed')
 parser.add_argument('--factor', default='1.', type=float, help='Width factor of the network')
 args = parser.parse_args()
 
-args.archi ='default'
 config_task.factor = args.factor
 args.use_cuda = True
 
@@ -51,7 +50,7 @@ if not os.path.isdir(args.expdir):
     os.mkdir(args.expdir) 
 
 
-args.ckpdir = args.expdir + '/checkpoint/'
+args.ckpdir = args.expdir + '/checkpoints/'
 args.svdir  = args.expdir + '/results/'
 
 if not os.path.isdir(args.ckpdir):
@@ -152,6 +151,6 @@ for epoch in range(start_epoch, start_epoch+args.nb_epochs):
         results[0:2,epoch,current_task] = [train_loss[i],train_acc[i]]
     for i in all_tasks:
         results[2:4,epoch,i] = [test_loss[i],test_acc[i]]
-    np.save(args.svdir+'/results_'+'adapt'+str(args.seed)+args.dropout+args.mode+args.proj+''.join(args.dataset)+'wd3x3_'+str(args.wd3x3)+'_wd1x1_'+str(args.wd1x1)+str(args.wd)+str(args.nb_epochs)+str(args.step1)+str(args.step2),results)
+    np.save(args.svdir+'_'+'_'.join([args.dataset, args.step1, args.step2, args.nb_epochs]), results)
     print('Epoch lasted {0}'.format(time.time()-st_time))
 
