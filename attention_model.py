@@ -114,18 +114,20 @@ class AttnOverWeight(nn.Module):
     # x shape - (N, HW, x_channels)
     # w shape - (w_channels, )
     def forward(self, x, w):
-        q = self.fc_q(x)     # (N, HW, attn_dim)
-        k = self.fc_k(w.unsqueeze(1))    # (w_channels, attn_dim)
-        v = self.fc_v(w.unsqueeze(1))   # (w_channels, attn_dim)
+        batch_size = x.size(0)
 
-        attn_score = torch.softmax(torch.bmm(q, k.transpose(1, 2))/torch.sqrt(self.attn_dim), dim=2)  # (N, HW, w_channels)
+        q = self.fc_q(x)     # (N, HW, attn_dim)
+        k = self.fc_k(w.reshape(1, -1, 1)).repeat(batch_size, 1, 1)    # (N, w_channels, attn_dim)
+        v = self.fc_v(w.reshape(1, -1, 1)).repeat(batch_size, 1, 1)   # (N, w_channels, attn_dim)
+
+        print(q.size(), k.transpose(1, 2).size())
+        attn_score = torch.softmax(torch.bmm(q, k.transpose(1, 2))/torch.sqrt(self.attn_dim), dim=1)  # (N, HW, w_channels)
 
         # Currently taking a mean along HW; may improve later
         attn_out = attn_score.mean(dim=1).unsqueeze(2) * v   # (N, w_channels, attn_dim)
         
         weighted_w = self.fc_o(attn_out).squeeze(2)         # (N, w_channels)
-
-        expanded_w = w.expand_as(weighted_w)                # (N, w_channels)
+        expanded_w = w.reshape(1, -1).repeat(batch_size, 1) # (N, w_channels)
 
         masked_w = expanded_w + self.gamma * weighted_w        # (N, w_channels)
 
