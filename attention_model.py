@@ -67,7 +67,7 @@ class MaskedConv2d(nn.Module):
         # Attention should be performed separately on weights and bias
         # We don't have bias for now
         w = self.weight.flatten()
-        print(w.shape())
+        print(w.size())
         masked_w = self.attns[task](x, w).view(batch_size, self.out_channels, self.in_channels, *self.kernel_size)
 
         # move batch dim into out_channels
