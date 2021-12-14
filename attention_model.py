@@ -21,6 +21,14 @@ def weight_init(m):
         m.weight.data.uniform_()
         m.bias.data.zero_()
 
+class LambdaLayer(nn.Module):
+    def __init__(self, lambd):
+        super(LambdaLayer, self).__init__()
+        self.lambd = lambd
+
+    def forward(self, x):
+        return self.lambd(x)
+
 
 class MaskedConv2d(nn.Module):
     """Modified conv with masks for weights."""
@@ -153,18 +161,15 @@ class BasicBlock(nn.Module):
         self.conv1 = conv_task(in_planes, planes, stride, nb_tasks)
         self.conv2 = conv_task(planes, planes, 1, nb_tasks)
         self.avgpool = nn.AvgPool2d(2)
+        self.shortcut = nn.Sequential()
+        if stride != 1 or in_planes != planes:
+            self.shortcut = LambdaLayer(lambda x: F.pad(x[:, :, ::2, ::2], (0, 0, 0, 0, planes//4, planes//4), "constant", 0))
         
     def forward(self, x):
         residual = x
-        print('x, {}'.format(x.size()))
         y = F.relu(self.conv1(x))
-        print('conv1, {}'.format(y.size()))
         y = self.conv2(y)
-        print('conv2, {}'.format(y.size()))
-        residual = self.avgpool(x)
-        residual = torch.cat((residual, residual*0), 1)
-        print('residual, {}'.format(residual.size()))
-        out = F.relu(y+residual)
+        out = F.relu(y+self.shortcut(residual))
         return out
 
 
