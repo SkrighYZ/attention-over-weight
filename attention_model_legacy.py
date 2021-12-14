@@ -21,6 +21,14 @@ def weight_init(m):
         m.weight.data.uniform_()
         m.bias.data.zero_()
 
+class LambdaLayer(nn.Module):
+    def __init__(self, lambd):
+        super(LambdaLayer, self).__init__()
+        self.lambd = lambd
+
+    def forward(self, x):
+        return self.lambd(x)
+
 
 class MaskedConv2d(nn.Module):
     """Modified conv with masks for weights."""
@@ -29,11 +37,6 @@ class MaskedConv2d(nn.Module):
                  padding=0, dilation=1, groups=1, bias=True,
                  in_size=0, nb_tasks=10):
         super(MaskedConv2d, self).__init__()
-        kernel_size = _pair(kernel_size)
-        stride = _pair(stride)
-        padding = _pair(padding)
-        dilation = _pair(dilation)
-        self.in_size = in_size
 
 
         if groups != 1:
@@ -44,27 +47,28 @@ class MaskedConv2d(nn.Module):
 
         self.in_channels = in_channels
         self.out_channels = out_channels
-        self.kernel_size = kernel_size
-        self.stride = stride
-        self.padding = padding
-        self.dilation = dilation
+        self.kernel_size = (kernel_size, kernel_size)
+        self.stride = (stride, stride)
+        self.padding = (padding, padding)
+        self.dilation = (dilation, dilation)
         self.transposed = False
-        self.output_padding = _pair(0)
+        self.output_padding = (0, 0)
         self.groups = groups     
+        self.in_size = in_size
 
         # weight and bias are no longer Parameters.
-        self.weight = Variable(torch.Tensor(out_channels, in_channels, *kernel_size), requires_grad=False)
+        self.weight = Variable(torch.Tensor(self.out_channels, self.in_channels, *self.kernel_size), requires_grad=False)
         self.register_parameter('bias', None)
 
         w_channels = torch.numel(self.weight)
-        self.attn_dim = num_weights // 8
+        self.attn_dim = self.in_channels    # may try different values later
         self.attns = nn.ModuleList([AttnOverWeight(self.in_channels, w_channels, self.attn_dim) for i in range(nb_tasks)])
 
     def forward(self, input):
 
         task = config_task.task
 
-        batch_size = x.size(0)
+        batch_size = input.size(0)
 
         x = input.view(batch_size, self.in_channels, -1).permute(0, 2, 1)
 
@@ -76,9 +80,9 @@ class MaskedConv2d(nn.Module):
         # move batch dim into out_channels
         weights = masked_w.unsqueeze(0).view(-1, self.in_channels, *self.kernel_size) # (N*C_out, C_in, K_h, K_w)
         # move batch dim into in_channels
-        x = x.view(1, -1, x.size(2), x.size(3)) # (1, N*C_in, H, W)
+        x = input.view(1, -1, input.size(2), input.size(3)) # (1, N*C_in, H, W)
 
-        out_grouped = F.conv2d(input, weights, None, self.stride, self.padding, self.dilation, groups=batch_size)
+        out_grouped = F.conv2d(x, weights, None, self.stride, self.padding, self.dilation, groups=batch_size)
 
         return out_grouped.view(batch_size, self.out_channels, out_grouped.size(2), out_grouped.size(3))
 
@@ -110,32 +114,31 @@ class AttnOverWeight(nn.Module):
 
         # May change to 1x1 Conv later
         self.fc_q = nn.Linear(x_channels, attn_dim)
-        self.fc_k = nn.Linear(w_channels, attn_dim)
-        self.fc_v = nn.Linear(w_channels, attn_dim)
-        self.fc_o = nn.Linear(attn_dim, w_channels)
+        self.fc_k = nn.Linear(1, attn_dim)
+        self.fc_v = nn.Linear(1, attn_dim)
+        self.fc_o = nn.Linear(attn_dim, 1)
         self.gamma = nn.Parameter(torch.randn(1))
 
     # x shape - (N, HW, x_channels)
-    # w shape - (N, w_channels)
+    # w shape - (w_channels, )
     def forward(self, x, w):
-        q = self.fc_q(x)               # (N, HW, attn_dim)
-        k = self.fc_k(w).expand_as(q[:, 0:1, :])  # (N, 1, attn_dim)
-        v = self.fc_v(w).expand_as(q[:, 0:1, :])  # (N, 1, attn_dim)
-
-        attn_score = torch.softmax(torch.bmm(q, k.transpose(1, 2))/torch.sqrt(self.attn_dim), dim=2)  # (N, HW, 1)
-        attn_out = torch.bmm(attn_score, v)    # (N, HW, attn_dim)
-        
-        # Currently taking a mean along HW; may improve later
-        weighted_w = self.fc_o(attn_out.mean(dim=1))     # (N, w_channels)
-
-        #mask_normalized = (mask - torch.min(mask, dim=1, keepdim=True)) / torch.max(mask, dim=1, keepdim=True)
-
         batch_size = x.size(0)
-        expanded_w = w.expand_as(weighted_w)
 
-        #masked_w = self.gamma * expanded_w + mask_normalized * expanded_w 
+        q = self.fc_q(x)     # (N, HW, attn_dim)
+        k = self.fc_k(w.reshape(1, -1, 1)).repeat(batch_size, 1, 1)    # (N, w_channels, attn_dim)
+        print(w.reshape(1, -1, 1).size())
+        v = self.fc_v(w.reshape(1, -1, 1)).repeat(batch_size, 1, 1)   # (N, w_channels, attn_dim)
 
-        masked_w = self.gamma * expanded_w + weighted_w		# (N, w_channels)
+        # Take softmax along w_channels dim to get contribution distribution of each weight to each pixel in HW dim
+        attn_score = torch.softmax(torch.bmm(q, k.transpose(1, 2))/math.sqrt(self.attn_dim), dim=2)  # (N, HW, w_channels)
+
+        # Currently taking a mean along HW; may improve later
+        attn_out = attn_score.mean(dim=1).unsqueeze(2) * v   # (N, w_channels, attn_dim)
+        
+        weighted_w = self.fc_o(attn_out).squeeze(2)         # (N, w_channels)
+        expanded_w = w.reshape(1, -1).repeat(batch_size, 1) # (N, w_channels)
+
+        masked_w = expanded_w + self.gamma * weighted_w        # (N, w_channels)
 
         return masked_w
 
@@ -160,14 +163,15 @@ class BasicBlock(nn.Module):
         self.conv1 = conv_task(in_planes, planes, stride, nb_tasks)
         self.conv2 = conv_task(planes, planes, 1, nb_tasks)
         self.avgpool = nn.AvgPool2d(2)
+        self.shortcut = nn.Sequential()
+        if stride != 1 or in_planes != planes:
+            self.shortcut = LambdaLayer(lambda x: F.pad(x[:, :, ::2, ::2], (0, 0, 0, 0, planes//4, planes//4), "constant", 0))
         
     def forward(self, x):
         residual = x
         y = F.relu(self.conv1(x))
         y = self.conv2(y)
-        residual = self.avgpool(x)
-        residual = torch.cat((residual, residual*0), 1)
-        out = F.relu(y+residual)
+        out = F.relu(y+self.shortcut(residual))
         return out
 
 
@@ -185,17 +189,9 @@ class ResNet(nn.Module):
         self.end_bns = nn.ModuleList([nn.Sequential(nn.BatchNorm2d(int(256*factor)),nn.ReLU(True)) for i in range(nb_tasks)])
         self.avgpool = nn.AdaptiveAvgPool2d(1)
         self.linears = nn.ModuleList([nn.Linear(int(256*factor), num_classes[i]) for i in range(nb_tasks)])         
-        
-        # for m in self.modules():
-        #     if isinstance(m, nn.Conv2d):
-        #         n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-        #         m.weight.data.normal_(0, math.sqrt(2. / n))
-        #     elif isinstance(m, nn.BatchNorm2d):
-        #         m.weight.data.fill_(1)
-        #         m.bias.data.zero_()
 
         for m in self.modules():
-        	m.apply(weight_init)
+            m.apply(weight_init)
     
     def _make_layer(self, block, planes, nblocks, stride=1, nb_tasks=1):
         layers = []
@@ -206,7 +202,7 @@ class ResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
-    	task = config_task.task
+        task = config_task.task
         x = F.relu(self.pre_layers_conv(x))
         x = self.layer1(x)
         x = self.layer2(x)
