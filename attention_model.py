@@ -121,7 +121,7 @@ class AttnOverWeight(nn.Module):
         v = self.fc_v(w.reshape(1, -1, 1)).repeat(batch_size, 1, 1)   # (N, w_channels, attn_dim)
 
         print(q.size(), k.transpose(1, 2).size())
-        attn_score = torch.softmax(torch.bmm(q, k.transpose(1, 2))/torch.sqrt(self.attn_dim), dim=1)  # (N, HW, w_channels)
+        attn_score = torch.softmax(torch.bmm(q, k.transpose(1, 2))/math.sqrt(self.attn_dim), dim=1)  # (N, HW, w_channels)
 
         # Currently taking a mean along HW; may improve later
         attn_out = attn_score.mean(dim=1).unsqueeze(2) * v   # (N, w_channels, attn_dim)
