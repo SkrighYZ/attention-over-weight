@@ -147,7 +147,7 @@ class AttnOverChannel(nn.Module):
         attn_score = torch.softmax(torch.bmm(q, k.transpose(1, 2)).mean(0)/math.sqrt(self.attn_dim), dim=1)  # (HW, out_channels)
 
         # Currently taking a mean along HW; may improve later
-        attn_out = attn_score.mean(dim=1).unsqueeze(1) * v   # (out_channels, attn_dim)
+        attn_out = attn_score.mean(dim=0).unsqueeze(1) * v   # (out_channels, attn_dim)
         
         weighted_w = self.fc_o(attn_out).flatten()        # (w_channels, )
 
