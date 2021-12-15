@@ -132,10 +132,10 @@ net.cuda()
 cudnn.benchmark = True
 
 
-# Freeze 3*3 convolution layers
-# for name, m in net.named_modules():
-#     if isinstance(m, MaskedConv2d):
-#         m.weight.requires_grad = False
+Freeze convolution layers
+for name, m in net.named_modules():
+    if isinstance(m, MaskedConv2d):
+        m.weight.requires_grad = False
 
 
 args.criterion = nn.CrossEntropyLoss()
