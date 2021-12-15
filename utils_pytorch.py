@@ -120,7 +120,7 @@ def test(epoch, loaders, all_tasks, net, best_acc, args, optimizer):
                 outputs = outputs[0]
             loss = args.criterion(outputs, targets)
             
-            losses[itera].update(loss.data[0], targets.size(0))
+            losses[itera].update(loss.item(), targets.size(0))
             _, predicted = torch.max(outputs.data, 1)
             correct = predicted.eq(targets.data).cpu().sum()
             top1[itera].update(correct*100./targets.size(0), targets.size(0))
