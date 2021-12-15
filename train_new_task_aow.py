@@ -110,11 +110,11 @@ for id_task in range(len(num_classes)):
     element = 0
     for name, m in net.named_modules():
         if isinstance(m, nn.BatchNorm2d) and 'bns.'+str(id_task) in name:
-                m.weight.data = store_data[element].clone()
-                m.bias.data = store_data_bias[element].clone()
-                m.running_var = store_data_rv[element].clone()
-                m.running_mean = store_data_rm[element].clone()
-                element += 1
+            m.weight.data = store_data[element].clone()
+            m.bias.data = store_data_bias[element].clone()
+            m.running_var = store_data_rv[element].clone()
+            m.running_mean = store_data_rm[element].clone()
+            element += 1
 
 del net_old
 
