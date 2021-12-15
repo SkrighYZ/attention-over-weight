@@ -66,7 +66,7 @@ class MaskedConv2d(nn.Module):
             self.attn_dim = self.in_channels
             self.attns = nn.ModuleList([AttnOverChannel(self.in_channels, self.out_channels, self.kernel_size[0], self.attn_dim) for i in range(nb_tasks)])
         elif config_task.mode == 'individual':
-            self.attn_dim = self.in_channels  // 8  # may try different values later
+            self.attn_dim = self.in_channels  // 2  # may try different values later
             self.attns = nn.ModuleList([AttnOverWeight(self.in_channels, w_channels, self.attn_dim) for i in range(nb_tasks)])
 
     def forward(self, input):
