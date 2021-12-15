@@ -129,7 +129,6 @@ class AttnOverChannel(nn.Module):
     def forward(self, x, w):
         batch_size = x.size(0)
 
-        x = x.reshape(batch_size, -1)
         w = w.reshape(w.size(0), -1)     # (out_channels, in_channels*kernel_size*kernel_size)
 
         q = self.fc_q(x)     # (N, HW, attn_dim)
