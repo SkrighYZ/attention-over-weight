@@ -143,7 +143,6 @@ class AttnOverChannel(nn.Module):
 
         q = self.fc_q(x)                                                        # (N, HW, attn_dim)
         k = self.fc_k(w.view(1, w.size(0), -1)).repeat(batch_size, 1, 1)        # (N, out_channels, attn_dim)
-        v = self.fc_v(w.view(1, w.size(0), -1))                                 # (out_channels, attn_dim)
 
         # Take softmax along out_channels dim to get contribution distribution of each conv filter to each pixel in HW dim
         attn_score = torch.softmax(torch.bmm(q, k.transpose(1, 2)).mean(0)/math.sqrt(self.attn_dim), dim=1)  # (HW, out_channels)
@@ -156,6 +155,7 @@ class AttnOverChannel(nn.Module):
             masked_w = (mask * w).flatten()                              # (w_channels, )
 
         else:
+            v = self.fc_v(w.view(1, w.size(0), -1))                      # (out_channels, attn_dim)
             attn_out = mean_attn_score.unsqueeze(1) * v                  # (out_channels, attn_dim)
             generated_w = self.fc_o(attn_out).flatten()                  # (w_channels, )
             masked_w = (1 - torch.sigmoid(self.gamma)) * w.flatten() + torch.sigmoid(self.gamma) * generated_w   # (w_channels, )
