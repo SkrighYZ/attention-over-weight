@@ -13,6 +13,7 @@ import time
 import numpy as np
 from torch.autograd import Variable
 import config_task
+import pickle
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -132,12 +133,13 @@ def test(epoch, loaders, all_tasks, net, best_acc, args, optimizer):
     acc = np.sum([top1[i].avg for i in range(len(all_tasks))])
     if acc > best_acc:
         print('Saving..')
-        state = {
-            'net': net,
+        acc = {
             'acc': acc,
             'epoch': epoch
         }
-        torch.save(state, args.ckpdir+'/ckpt'+'_'+''.join(args.dataset)+'_'+'_'.join([config_task.mode, str(args.step1), str(args.step2), str(args.nb_epochs)]) +'.t7')
+        path = args.ckpdir+'/'+''.join(args.dataset)+'_'+'_'.join([config_task.mode, str(args.step1), str(args.step2), str(args.nb_epochs)])
+        torch.save(net.state_dict(), path+'_ckpt.pth')
+        pickle.dump(acc, open(path+'_acc.pkl', 'wb'))
         best_acc = acc
     
     return [top1[i].avg for i in range(len(all_tasks))], [losses[i].avg for i in range(len(all_tasks))], best_acc
