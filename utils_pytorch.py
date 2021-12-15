@@ -83,7 +83,7 @@ def train(epoch, tloaders, tasks, net, args, optimizer,list_criterion=None):
         correct = predicted.eq(targets.data).cpu().sum()
         (top1[current_task_index]).update(correct*100./targets.size(0), targets.size(0))
 
-        print(correct, targets.size(0), correct.item()/targets.size(0))
+        print(correct, targets.size(0), correct.item()*1./targets.size(0))
 
         # apply gradients   
         loss.backward()
