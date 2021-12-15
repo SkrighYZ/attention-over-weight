@@ -137,7 +137,7 @@ def test(epoch, loaders, all_tasks, net, best_acc, args, optimizer):
             'acc': acc,
             'epoch': epoch,
         }
-        torch.save(state, args.ckpdir+'/ckpt'+config_task.mode+args.archi+args.proj+''.join(args.dataset)+'.t7')
+        torch.save(state, args.ckpdir+'/ckpt'+'_'+'_'.join([args.dataset, config_task.mode, args.step1, args.step2, args.nb_epochs]) +'.t7')
         best_acc = acc
     
     return [top1[i].avg for i in range(len(all_tasks))], [losses[i].avg for i in range(len(all_tasks))], best_acc
