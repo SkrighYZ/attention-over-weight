@@ -94,7 +94,7 @@ class MaskedConv2d(nn.Module):
             output = out_grouped.view(batch_size, self.out_channels, out_grouped.size(2), out_grouped.size(3))
 
         else:
-            maked_w = masked_w.view(self.out_channels, self.in_channels, *self.kernel_size)
+            weights = masked_w.view(self.out_channels, self.in_channels, *self.kernel_size)
             output = F.conv2d(input, weights, None, self.stride, self.padding, self.dilation)
         
         return output
