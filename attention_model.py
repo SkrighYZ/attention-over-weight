@@ -144,7 +144,7 @@ class AttnOverChannel(nn.Module):
         v = self.fc_v(w.view(1, w.size(0), -1))   # (out_channels, attn_dim)
 
         # Take softmax along out_channels dim to get contribution distribution of each conv filter to each pixel in HW dim
-        attn_score = torch.softmax(torch.bmm(q, k.transpose(1, 2))/math.sqrt(self.attn_dim).mean(0), dim=1)  # (HW, out_channels)
+        attn_score = torch.softmax(torch.bmm(q, k.transpose(1, 2)).mean(0)/math.sqrt(self.attn_dim), dim=1)  # (HW, out_channels)
 
         # Currently taking a mean along HW; may improve later
         attn_out = attn_score.mean(dim=1).unsqueeze(1) * v   # (out_channels, attn_dim)
