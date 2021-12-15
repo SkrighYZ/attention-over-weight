@@ -77,7 +77,7 @@ def train(epoch, tloaders, tasks, net, args, optimizer,list_criterion=None):
         outputs = net(inputs)
         loss = args.criterion(outputs, targets)
         # measure accuracy and record loss
-        (losses[current_task_index]).update(loss.data[0], targets.size(0))
+        (losses[current_task_index]).update(loss.item(), targets.size(0))
         _, predicted = torch.max(outputs.data, 1)
         correct = predicted.eq(targets.data).cpu().sum()
         (top1[current_task_index]).update(correct*100./targets.size(0), targets.size(0))     
