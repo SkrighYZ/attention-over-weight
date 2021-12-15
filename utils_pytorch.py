@@ -80,7 +80,7 @@ def train(epoch, tloaders, tasks, net, args, optimizer,list_criterion=None):
         (losses[current_task_index]).update(loss.item(), targets.size(0))
         _, predicted = torch.max(outputs.data, 1)
         correct = predicted.eq(targets.data).cpu().sum()
-        print(correct)
+        print(predicted.data, targets.data)
         (top1[current_task_index]).update(correct*100./targets.size(0), targets.size(0))     
         # apply gradients   
         loss.backward()
