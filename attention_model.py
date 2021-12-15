@@ -61,8 +61,13 @@ class MaskedConv2d(nn.Module):
         self.register_parameter('bias', None)
 
         w_channels = torch.numel(self.weight)
-        self.attn_dim = self.in_channels    # may try different values later
-        self.attns = nn.ModuleList([AttnOverWeight(self.in_channels, w_channels, self.attn_dim) for i in range(nb_tasks)])
+
+        if config_task.mode == 'channel':
+            self.attn_dim = self.in_channels
+            self.attns = nn.ModuleList([AttnOverChannel(self.in_channels, self.out_channels, self.kernel_size[0], self.attn_dim) for i in range(nb_tasks)])
+        elif config_task.mode == 'individual':
+            self.attn_dim = self.in_channels    # may try different values later
+            self.attns = nn.ModuleList([AttnOverWeight(self.in_channels, w_channels, self.attn_dim) for i in range(nb_tasks)])
 
     def forward(self, input):
 
@@ -74,11 +79,11 @@ class MaskedConv2d(nn.Module):
 
         # Attention should be performed separately on weights and bias
         # We don't have bias for now
-        w = self.weight.flatten()
+        w = self.weight
         masked_w = self.attns[task](x, w).view(batch_size, self.out_channels, self.in_channels, *self.kernel_size)
 
         # move batch dim into out_channels
-        weights = masked_w.unsqueeze(0).view(-1, self.in_channels, *self.kernel_size) # (N*C_out, C_in, K_h, K_w)
+        weights = masked_w.unsqueeze(0).view(-1, self.in_channels, *self.kernel_size) # (N*C_out, C_in, K, K)
         # move batch dim into in_channels
         x = input.view(1, -1, input.size(2), input.size(3)) # (1, N*C_in, H, W)
 
@@ -106,6 +111,45 @@ class MaskedConv2d(nn.Module):
         return s.format(name=self.__class__.__name__, **self.__dict__)
 
 
+class AttnOverChannel(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, attn_dim):
+        super(AttnOverChannel, self).__init__()
+
+        self.attn_dim = attn_dim
+
+        # May change to 1x1 Conv later
+        self.fc_q = nn.Linear(in_channels, attn_dim)
+        self.fc_k = nn.Linear(in_channels*kernel_size*kernel_size, attn_dim)
+        self.fc_v = nn.Linear(in_channels*kernel_size*kernel_size, attn_dim)
+        self.fc_o = nn.Linear(attn_dim, in_channels*kernel_size*kernel_size)
+        self.gamma = nn.Parameter(torch.randn(1))
+
+    # x shape - (N, HW, in_channels)
+    # w shape - (out_channels, in_channels, kernel_size, kernel_size)
+    def forward(self, x, w):
+        batch_size = x.size(0)
+
+        x = x.view(batch_size, -1)
+        w = w.view(w.size(0), -1)     # (out_channels, in_channels*kernel_size*kernel_size)
+
+        q = self.fc_q(x)     # (N, HW, attn_dim)
+        k = self.fc_k(w.view(1, w.size(0), -1)).repeat(batch_size, 1, 1)    # (N, out_channels, attn_dim)
+        v = self.fc_v(w.view(1, w.size(0), -1)).repeat(batch_size, 1, 1)   # (N, out_channels, attn_dim)
+
+        # Take softmax along out_channels dim to get contribution distribution of each conv filter to each pixel in HW dim
+        attn_score = torch.softmax(torch.bmm(q, k.transpose(1, 2))/math.sqrt(self.attn_dim), dim=2)  # (N, HW, out_channels)
+
+        # Currently taking a mean along HW; may improve later
+        attn_out = attn_score.mean(dim=1).unsqueeze(2) * v   # (N, out_channels, attn_dim)
+        
+        weighted_w = self.fc_o(attn_out).view(batch_size, -1)        # (N, w_channels)
+        expanded_w = w.view(1, -1).repeat(batch_size, 1)            # (N, w_channels)
+
+        masked_w = expanded_w + self.gamma * weighted_w              # (N, w_channels)
+
+        return masked_w
+
+
 class AttnOverWeight(nn.Module):
     def __init__(self, x_channels, w_channels, attn_dim):
         super(AttnOverWeight, self).__init__()
@@ -120,13 +164,14 @@ class AttnOverWeight(nn.Module):
         self.gamma = nn.Parameter(torch.randn(1))
 
     # x shape - (N, HW, x_channels)
-    # w shape - (w_channels, )
+    # w shape - (out_channels, in_channels, kernel_size, kernel_size)
     def forward(self, x, w):
         batch_size = x.size(0)
 
+        w = w.flatten()     # (w_channels, )
+
         q = self.fc_q(x)     # (N, HW, attn_dim)
         k = self.fc_k(w.reshape(1, -1, 1)).repeat(batch_size, 1, 1)    # (N, w_channels, attn_dim)
-        print(w.reshape(1, -1, 1).size())
         v = self.fc_v(w.reshape(1, -1, 1)).repeat(batch_size, 1, 1)   # (N, w_channels, attn_dim)
 
         # Take softmax along w_channels dim to get contribution distribution of each weight to each pixel in HW dim

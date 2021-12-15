@@ -12,7 +12,7 @@ import torchvision
 import torchvision.transforms as transforms
 import attention_model
 import models
-from attention_model import MaskedConv2d, AttnOverWeight, ResNet
+from attention_model import MaskedConv2d 
 import os
 import time
 import argparse
@@ -40,9 +40,12 @@ parser.add_argument('--seed', default=0, type=int, help='seed')
 parser.add_argument('--batch_size', default=128, type=int, help='batch size')
 parser.add_argument('--eval_batch_size', default=100, type=int, help='eval batch size')
 parser.add_argument('--factor', default='1.', type=float, help='Width factor of the network')
+
+parser.add_argument('--mode', default='channel', type=str, help='Mode of attention [channel | individual]')
 args = parser.parse_args()
 
 config_task.factor = args.factor
+config_task.mode = args.mode
 args.use_cuda = True
 
 if type(args.dataset) is str:
