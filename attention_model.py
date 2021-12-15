@@ -146,7 +146,7 @@ class AttnOverChannel(nn.Module):
 
         masked_w = expanded_w + self.gamma * weighted_w              # (N, w_channels)
 
-        return masked_w
+        return expanded_w
 
 
 class AttnOverWeight(nn.Module):
