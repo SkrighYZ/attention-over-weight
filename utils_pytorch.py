@@ -21,10 +21,10 @@ class AverageMeter(object):
         self.reset()
     
     def reset(self):
-        self.val = 0
-        self.avg = 0
-        self.sum = 0
-        self.count = 0
+        self.val = 0.0
+        self.avg = 0.0
+        self.sum = 0.0
+        self.count = 0.0
     
     def update(self, val, n=1):
         self.val = val
@@ -138,10 +138,10 @@ def test(epoch, loaders, all_tasks, net, best_acc, args, optimizer):
             'acc': acc,
             'epoch': epoch
         }
-        path = args.ckpdir+'/'+''.join(args.dataset)+'_'+'_'.join([config_task.mode, str(args.step1), str(args.step2), str(args.nb_epochs)])
+        path = args.ckpdir+'/'+'-'.join(args.dataset)+'_'+'_'.join([config_task.mode, str(args.step1), str(args.step2), str(args.nb_epochs)])
         torch.save(net.state_dict(), path+'_ckpt.pth')
         pickle.dump(acc, open(path+'_acc.pkl', 'wb'))
-        best_acc = acc
+        best_acc = acc['acc']
     
     return [top1[i].avg for i in range(len(all_tasks))], [losses[i].avg for i in range(len(all_tasks))], best_acc
 
