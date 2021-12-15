@@ -115,16 +115,17 @@ def test(epoch, loaders, all_tasks, net, best_acc, args, optimizer):
         for batch_idx, (inputs, targets) in enumerate(loaders[i]):
             if args.use_cuda:
                 inputs, targets = inputs.cuda(), targets.cuda()
-            inputs, targets = Variable(inputs, volatile=True), Variable(targets)
-            outputs = net(inputs)
-            if isinstance(outputs, tuple):
-                outputs = outputs[0]
-            loss = args.criterion(outputs, targets)
+            with torch.no_grad():
+                inputs, targets = Variable(inputs), Variable(targets)
+                outputs = net(inputs)
+                if isinstance(outputs, tuple):
+                    outputs = outputs[0]
+                loss = args.criterion(outputs, targets)
             
-            losses[itera].update(loss.item(), targets.size(0))
-            _, predicted = torch.max(outputs.data, 1)
-            correct = predicted.eq(targets.data).cpu().sum()
-            top1[itera].update(correct*100./targets.size(0), targets.size(0))
+                losses[itera].update(loss.item(), targets.size(0))
+                _, predicted = torch.max(outputs.data, 1)
+                correct = predicted.eq(targets.data).cpu().sum()
+                top1[itera].update(correct*100./targets.size(0), targets.size(0))
         
         print('Task {0} : Test Loss {loss.val:.4f} ({loss.avg:.4f})\t'
               'Test Acc {top1.val:.3f} ({top1.avg:.3f})'.format(i, loss=losses[itera], top1=top1[itera]))

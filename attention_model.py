@@ -80,16 +80,24 @@ class MaskedConv2d(nn.Module):
         # Attention should be performed separately on weights and bias
         # We don't have bias for now
         w = self.weight
-        masked_w = self.attns[task](x, w).view(batch_size, self.out_channels, self.in_channels, *self.kernel_size)
+        masked_w = self.attns[task](x, w)
 
-        # move batch dim into out_channels
-        weights = masked_w.unsqueeze(0).view(-1, self.in_channels, *self.kernel_size) # (N*C_out, C_in, K, K)
-        # move batch dim into in_channels
-        x = input.view(1, -1, input.size(2), input.size(3)) # (1, N*C_in, H, W)
+        if masked_w.size().size(0) > 1:
+            maked_w = masked_w.view(batch_size, self.out_channels, self.in_channels, *self.kernel_size)
 
-        out_grouped = F.conv2d(x, weights, None, self.stride, self.padding, self.dilation, groups=batch_size)
+            # move batch dim into out_channels
+            weights = masked_w.unsqueeze(0).view(-1, self.in_channels, *self.kernel_size) # (N*C_out, C_in, K, K)
+            # move batch dim into in_channels
+            x = input.view(1, -1, input.size(2), input.size(3)) # (1, N*C_in, H, W)
 
-        return out_grouped.view(batch_size, self.out_channels, out_grouped.size(2), out_grouped.size(3))
+            out_grouped = F.conv2d(x, weights, None, self.stride, self.padding, self.dilation, groups=batch_size)
+            output = out_grouped.view(batch_size, self.out_channels, out_grouped.size(2), out_grouped.size(3))
+
+        else:
+            maked_w = masked_w.view(self.out_channels, self.in_channels, *self.kernel_size)
+            output = F.conv2d(input, weights, None, self.stride, self.padding, self.dilation)
+        
+        return output
 
 
     def __repr__(self):
@@ -133,18 +141,17 @@ class AttnOverChannel(nn.Module):
 
         q = self.fc_q(x)     # (N, HW, attn_dim)
         k = self.fc_k(w.view(1, w.size(0), -1)).repeat(batch_size, 1, 1)    # (N, out_channels, attn_dim)
-        v = self.fc_v(w.view(1, w.size(0), -1)).repeat(batch_size, 1, 1)   # (N, out_channels, attn_dim)
+        v = self.fc_v(w.view(1, w.size(0), -1))   # (out_channels, attn_dim)
 
         # Take softmax along out_channels dim to get contribution distribution of each conv filter to each pixel in HW dim
         attn_score = torch.softmax(torch.bmm(q, k.transpose(1, 2))/math.sqrt(self.attn_dim), dim=2)  # (N, HW, out_channels)
 
-        # Currently taking a mean along HW; may improve later
-        attn_out = attn_score.mean(dim=1).unsqueeze(2) * v   # (N, out_channels, attn_dim)
+        # Currently taking a mean along HW and batch; may improve later
+        attn_out = attn_score.mean(dim=1).mean(dim=0).unsqueeze(2) * v   # (out_channels, attn_dim)
         
-        weighted_w = self.fc_o(attn_out).view(batch_size, -1)        # (N, w_channels)
-        expanded_w = w.view(1, -1).repeat(batch_size, 1)            # (N, w_channels)
+        weighted_w = self.fc_o(attn_out).flatten()        # (w_channels, )
 
-        masked_w = expanded_w + self.gamma * weighted_w              # (N, w_channels)
+        masked_w = w.flatten() + self.gamma * weighted_w              # (w_channels, )
 
         return masked_w
 
