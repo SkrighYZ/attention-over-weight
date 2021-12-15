@@ -82,7 +82,7 @@ class MaskedConv2d(nn.Module):
         w = self.weight
         masked_w = self.attns[task](x, w)
 
-        if masked_w.size().size(0) > 1:
+        if masked_w.ndim > 1:
             maked_w = masked_w.view(batch_size, self.out_channels, self.in_channels, *self.kernel_size)
 
             # move batch dim into out_channels
