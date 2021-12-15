@@ -16,7 +16,7 @@ def weight_init(m):
     if isinstance(m, (torch.nn.Linear, torch.nn.Conv2d, torch.nn.Parameter)):
         torch.nn.init.xavier_normal_(m.weight.data)
         if m.bias is not None:
-            torch.nn.init.constant_(m.bias.data, 0.1)
+            torch.nn.init.constant_(m.bias.data, 0.01)
     elif isinstance(m, (torch.nn.BatchNorm2d, torch.nn.BatchNorm1d)):
         m.weight.data.uniform_()
         m.bias.data.zero_()
@@ -128,9 +128,11 @@ class AttnOverChannel(nn.Module):
         # May change to 1x1 Conv later
         self.fc_q = nn.Linear(in_channels, attn_dim)
         self.fc_k = nn.Linear(in_channels*kernel_size*kernel_size, attn_dim)
-        self.fc_v = nn.Linear(in_channels*kernel_size*kernel_size, attn_dim)
-        self.fc_o = nn.Linear(attn_dim, in_channels*kernel_size*kernel_size)
-        self.gamma = nn.Parameter(torch.randn(1))
+
+        if config_task.res:
+            self.fc_v = nn.Linear(in_channels*kernel_size*kernel_size, attn_dim)
+            self.fc_o = nn.Linear(attn_dim, in_channels*kernel_size*kernel_size)
+            self.gamma = nn.Parameter(torch.randn(1))
 
     # x shape - (N, HW, in_channels)
     # w shape - (out_channels, in_channels, kernel_size, kernel_size)
