@@ -157,6 +157,6 @@ for epoch in range(start_epoch, start_epoch+args.nb_epochs):
         results[0:2,epoch,current_task] = [train_loss[i],train_acc[i]]
     for i in all_tasks:
         results[2:4,epoch,i] = [test_loss[i],test_acc[i]]
-    np.save(args.svdir+'_'+'_'.join([args.dataset, config_task.mode, args.step1, args.step2, args.nb_epochs]), results)
+    np.save(args.svdir+'_'+'_'.join([args.dataset, config_task.mode, str(args.step1), str(args.step2), str(args.nb_epochs)]), results)
     print('Epoch lasted {0}'.format(time.time()-st_time))
 
