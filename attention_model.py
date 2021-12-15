@@ -66,7 +66,7 @@ class MaskedConv2d(nn.Module):
             self.attn_dim = self.in_channels
             self.attns = nn.ModuleList([AttnOverChannel(self.in_channels, self.out_channels, self.kernel_size[0], self.attn_dim) for i in range(nb_tasks)])
         elif config_task.mode == 'individual':
-            self.attn_dim = self.in_channels    # may try different values later
+            self.attn_dim = self.in_channels  // 8  # may try different values later
             self.attns = nn.ModuleList([AttnOverWeight(self.in_channels, w_channels, self.attn_dim) for i in range(nb_tasks)])
 
     def forward(self, input):
@@ -144,10 +144,10 @@ class AttnOverChannel(nn.Module):
         v = self.fc_v(w.view(1, w.size(0), -1))   # (out_channels, attn_dim)
 
         # Take softmax along out_channels dim to get contribution distribution of each conv filter to each pixel in HW dim
-        attn_score = torch.softmax(torch.bmm(q, k.transpose(1, 2))/math.sqrt(self.attn_dim), dim=2)  # (N, HW, out_channels)
+        attn_score = torch.softmax(torch.bmm(q, k.transpose(1, 2))/math.sqrt(self.attn_dim).mean(0), dim=1)  # (HW, out_channels)
 
-        # Currently taking a mean along HW and batch; may improve later
-        attn_out = torch.sigmoid(attn_score.mean(dim=1).mean(dim=0)).unsqueeze(1) * v   # (out_channels, attn_dim)
+        # Currently taking a mean along HW; may improve later
+        attn_out = attn_score.mean(dim=1).unsqueeze(1) * v   # (out_channels, attn_dim)
         
         weighted_w = self.fc_o(attn_out).flatten()        # (w_channels, )
 
