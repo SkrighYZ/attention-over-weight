@@ -132,7 +132,7 @@ net.cuda()
 cudnn.benchmark = True
 
 
-Freeze convolution layers
+# Freeze convolution layers
 for name, m in net.named_modules():
     if isinstance(m, MaskedConv2d):
         m.weight.requires_grad = False
