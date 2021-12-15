@@ -152,7 +152,7 @@ class AttnOverChannel(nn.Module):
         weighted_w = self.fc_o(attn_out).flatten()        # (w_channels, )
 
         masked_w = w.flatten() + self.gamma * weighted_w              # (w_channels, )
-        print(self.gamma)
+
         return masked_w
 
 
