@@ -143,17 +143,25 @@ for name, m in net.named_modules():
 
 
 args.criterion = nn.CrossEntropyLoss()
-optimizer = sgd.SGD(filter(lambda p: p.requires_grad, net.parameters()), lr=args.lr, momentum=0.9, weight_decay=args.wd)
+#optimizer = sgd.SGD(filter(lambda p: p.requires_grad, net.parameters()), lr=args.lr, momentum=0.9, weight_decay=args.wd)
+
+optimizer = optim.SGD(filter(lambda p: p.requires_grad, net.parameters()), lr=args.lr, momentum=0.9, weight_decay=args.wd)
+scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[args.step1, args.step2], gamma=0.1)
 
 
 print("Start training")
 for epoch in range(start_epoch, start_epoch+args.nb_epochs):
-    training_tasks = utils_pytorch.adjust_learning_rate_and_learning_taks(optimizer, epoch, args)
+    #training_tasks = utils_pytorch.adjust_learning_rate_and_learning_taks(optimizer, epoch, args)
+
+    training_tasks = range(len(args.dataset))
+
     st_time = time.time()
     
     # Training and validation
     train_acc, train_loss = utils_pytorch.train(epoch, train_loaders, training_tasks, net, args, optimizer)
     test_acc, test_loss, best_acc = utils_pytorch.test(epoch,val_loaders, all_tasks, net, best_acc, args, optimizer)
+
+    scheduler.step()
         
     # Record statistics
     for i in range(len(training_tasks)):
