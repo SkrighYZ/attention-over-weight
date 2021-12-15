@@ -139,26 +139,26 @@ class AttnOverChannel(nn.Module):
 
         w = w.reshape(w.size(0), -1)     # (out_channels, in_channels*kernel_size*kernel_size)
 
-        q = self.fc_q(x)     # (N, HW, attn_dim)
-        k = self.fc_k(w.view(1, w.size(0), -1)).repeat(batch_size, 1, 1)    # (N, out_channels, attn_dim)
-        v = self.fc_v(w.view(1, w.size(0), -1))   # (out_channels, attn_dim)
+        q = self.fc_q(x)                                                        # (N, HW, attn_dim)
+        k = self.fc_k(w.view(1, w.size(0), -1)).repeat(batch_size, 1, 1)        # (N, out_channels, attn_dim)
+        v = self.fc_v(w.view(1, w.size(0), -1))                                 # (out_channels, attn_dim)
 
         # Take softmax along out_channels dim to get contribution distribution of each conv filter to each pixel in HW dim
         attn_score = torch.softmax(torch.bmm(q, k.transpose(1, 2)).mean(0)/math.sqrt(self.attn_dim), dim=1)  # (HW, out_channels)
 
         # Currently taking a mean along HW; may improve later
-        #attn_out = attn_score.mean(dim=0).unsqueeze(1) * v   # (out_channels, attn_dim)
-        #weighted_w = self.fc_o(attn_out).flatten()        # (w_channels, )
+        mean_attn_score = attn_score.mean(dim=0)                         # (out_channels, )
 
-        attn_out = 2 * torch.sigmoid(attn_score.mean(dim=0)).unsqueeze(1) * w    # (out_channels, in_channels*kernel_size*kernel_size)
-        weighted_w = attn_out.flatten()  # (w_channels, )
+        if not config_task.res:
+            mask = 2 * torch.sigmoid(mean_attn_score).unsqueeze(1)       # (out_channels, 1)
+            masked_w = (mask * w).flatten()                              # (w_channels, )
 
-        masked_w = w.flatten() + torch.tanh(self.gamma) * weighted_w              # (w_channels, )
-
-        if config_task.res:
-            return masked_w
+        else:
+            attn_out = mean_attn_score.unsqueeze(1) * v                  # (out_channels, attn_dim)
+            generated_w = self.fc_o(attn_out).flatten()                  # (w_channels, )
+            masked_w = (1 - torch.sigmoid(self.gamma)) * w.flatten() + torch.sigmoid(self.gamma) * generated_w   # (w_channels, )
         
-        return weighted_w
+        return masked_w
 
 
 class AttnOverWeight(nn.Module):
