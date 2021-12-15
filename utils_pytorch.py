@@ -81,10 +81,8 @@ def train(epoch, tloaders, tasks, net, args, optimizer,list_criterion=None):
         (losses[current_task_index]).update(loss.item(), targets.size(0))
         _, predicted = torch.max(outputs.data, 1)
         correct = predicted.eq(targets.data).cpu().sum()
-        (top1[current_task_index]).update(correct*100./targets.size(0), targets.size(0))
-
-        print(correct, targets.size(0), correct.item()*1./targets.size(0))
-
+        (top1[current_task_index]).update(correct.item()*100./targets.size(0), targets.size(0))
+        
         # apply gradients   
         loss.backward()
         optimizer.step()
@@ -128,7 +126,7 @@ def test(epoch, loaders, all_tasks, net, best_acc, args, optimizer):
                 losses[itera].update(loss.item(), targets.size(0))
                 _, predicted = torch.max(outputs.data, 1)
                 correct = predicted.eq(targets.data).cpu().sum()
-                top1[itera].update(correct*100./targets.size(0), targets.size(0))
+                top1[itera].update(correct.item()*100./targets.size(0), targets.size(0))
         
         print('Task {0} : Test Loss {loss.val:.4f} ({loss.avg:.4f})\t'
               'Test Acc {top1.val:.3f} ({top1.avg:.3f})'.format(i, loss=losses[itera], top1=top1[itera]))
