@@ -57,7 +57,7 @@ class MaskedConv2d(nn.Module):
         self.in_size = in_size
 
         # weight and bias are no longer Parameters.
-        self.weight = Variable(torch.Tensor(self.out_channels, self.in_channels, *self.kernel_size), requires_grad=False)
+        self.weight = Variable(torch.Tensor(self.out_channels, self.in_channels, *self.kernel_size), requires_grad=True)
         self.register_parameter('bias', None)
 
         w_channels = torch.numel(self.weight)
