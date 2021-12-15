@@ -153,6 +153,9 @@ class AttnOverChannel(nn.Module):
 
         masked_w = w.flatten() + torch.tanh(self.gamma) * weighted_w              # (w_channels, )
 
+        if config_task.res:
+            return masked_w
+        
         return weighted_w
 
 

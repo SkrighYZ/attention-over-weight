@@ -42,10 +42,12 @@ parser.add_argument('--eval_batch_size', default=100, type=int, help='eval batch
 parser.add_argument('--factor', default='1.', type=float, help='Width factor of the network')
 
 parser.add_argument('--mode', default='channel', type=str, help='Mode of attention [channel | individual]')
+parser.add_argument("--res", action='store_true', help="Whether to use residual on each weight")
 args = parser.parse_args()
 
 config_task.factor = args.factor
 config_task.mode = args.mode
+config_task.res = args.res
 args.use_cuda = True
 
 if type(args.dataset) is str:
@@ -157,6 +159,7 @@ for epoch in range(start_epoch, start_epoch+args.nb_epochs):
         results[0:2,epoch,current_task] = [train_loss[i],train_acc[i]]
     for i in all_tasks:
         results[2:4,epoch,i] = [test_loss[i],test_acc[i]]
-    np.save(args.svdir+'-'.join(args.dataset)+'_'+'_'.join([config_task.mode, str(args.step1), str(args.step2), str(args.nb_epochs)]), results)
+    res = 'res' if config_task.res else 'nores'
+    np.save(args.svdir+'-'.join(args.dataset)+'_'+'_'.join([config_task.mode, res, str(args.step1), str(args.step2), str(args.nb_epochs)]), results)
     print('Epoch lasted {0}'.format(time.time()-st_time))
 
