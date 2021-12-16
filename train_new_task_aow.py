@@ -41,7 +41,7 @@ parser.add_argument('--batch_size', default=128, type=int, help='batch size')
 parser.add_argument('--eval_batch_size', default=100, type=int, help='eval batch size')
 parser.add_argument('--factor', default='1.', type=float, help='Width factor of the network')
 
-parser.add_argument('--mode', default='channel', type=str, help='Mode of attention [channel | individual]')
+parser.add_argument('--mode', default='channel', type=str, help='Mode of attention [channel | individual | original]')
 parser.add_argument("--res", action='store_true', help="Whether to use residual on each weight")
 parser.add_argument('--att_factor', default=2, type=int, help='Attention dimension factor')
 args = parser.parse_args()
@@ -89,7 +89,7 @@ for name, m in net_old.named_modules():
 net = attention_model.resnet26(num_classes)
 element = 0
 for name, m in net.named_modules():
-    if isinstance(m, MaskedConv2d) and (m.kernel_size[0]==3):
+    if isinstance(m, (MaskedConv2d, nn.Conv2d)) and (m.kernel_size[0]==3):
         print(name, m)
         m.weight.data = store_data[element]
         element += 1
@@ -132,10 +132,10 @@ results = np.zeros((4,start_epoch+args.nb_epochs,len(args.num_classes)))
 all_tasks = range(len(args.dataset))
 np.random.seed(1993)
 
-res = 'res' if config_task.res else 'nores'
-path = args.ckpdir+'/'+'-'.join(args.dataset)+'_'+'_'.join([str(config_task.att_factor), res, str(args.step1), str(args.step2), str(args.nb_epochs)])
-net.load_state_dict(torch.load(path+'_ckpt.pth'))
-print('LOAD SUCCESSFULLY')
+# res = 'res' if config_task.res else 'nores'
+# path = args.ckpdir+'/'+'-'.join(args.dataset)+'_'+'_'.join([str(config_task.att_factor), res, str(args.step1), str(args.step2), str(args.nb_epochs)])
+# net.load_state_dict(torch.load(path+'_ckpt.pth'))
+# print('LOAD SUCCESSFULLY')
 
 net.cuda()
 cudnn.benchmark = True
