@@ -204,7 +204,10 @@ class conv_task(nn.Module):
     
     def __init__(self, in_planes, planes, stride=1, nb_tasks=1):
         super(conv_task, self).__init__()
-        self.conv = MaskedConv2d(in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
+        if config_task.mode == 'original':
+            self.conv = nn.Conv2d(in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
+        else:
+            self.conv = MaskedConv2d(in_planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
         self.bns = nn.ModuleList([nn.BatchNorm2d(planes) for i in range(nb_tasks)])
     
     def forward(self, x):
