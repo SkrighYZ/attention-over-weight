@@ -219,21 +219,24 @@ class conv_task(nn.Module):
 class BasicBlock(nn.Module):
     expansion = 1
 
-    def __init__(self, in_planes, planes, stride=1, nb_tasks=1):
+    def __init__(self, in_planes, planes, stride=1, nb_tasks=1, shortcut=0):
         super(BasicBlock, self).__init__()
         self.conv1 = conv_task(in_planes, planes, stride, nb_tasks)
         self.conv2 = conv_task(planes, planes, 1, nb_tasks)
-        self.avgpool = nn.AvgPool2d(2)
-        self.shortcut = nn.Sequential()
-        if stride != 1 or in_planes != planes:
-            self.shortcut = LambdaLayer(lambda x: F.pad(x[:, :, ::2, ::2], (0, 0, 0, 0, planes//4, planes//4), "constant", 0))
+        self.shortcut = shortcut
+        if self.shortcut == 1:
+            self.avgpool = nn.AvgPool2d(2)
         
     def forward(self, x):
         residual = x
         y = F.relu(self.conv1(x))
         y = self.conv2(y)
-        out = F.relu(y+self.shortcut(residual))
-        return out
+        if self.shortcut == 1:
+            residual = self.avgpool(x)
+            residual = torch.cat((residual, residual*0),1)
+        y += residual
+        y = F.relu(y)
+        return y
 
 
 class ResNet(nn.Module):
@@ -256,7 +259,9 @@ class ResNet(nn.Module):
     
     def _make_layer(self, block, planes, nblocks, stride=1, nb_tasks=1):
         layers = []
-        layers.append(block(self.in_planes, planes, stride, nb_tasks=nb_tasks))
+        if stride != 1 or self.in_planes != planes * block.expansion:
+            shortcut = 1
+        layers.append(block(self.in_planes, planes, stride, nb_tasks=nb_tasks, shortcut=0))
         self.in_planes = planes * block.expansion
         for i in range(1, nblocks):
             layers.append(block(self.in_planes, planes, nb_tasks=nb_tasks))
