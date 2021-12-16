@@ -230,13 +230,10 @@ class BasicBlock(nn.Module):
     def forward(self, x):
         residual = x
         y = F.relu(self.conv1(x))
-        print(y.size())
         y = self.conv2(y)
-        print(y.size())
         if self.shortcut == 1:
             residual = self.avgpool(x)
             residual = torch.cat((residual, residual*0),1)
-        print(residual.size())
         y += residual
         y = F.relu(y)
         return y
