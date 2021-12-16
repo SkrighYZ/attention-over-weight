@@ -70,7 +70,7 @@ def prepare_data_loaders(batch_size, eval_batch_size, dataset_names, data_dir, i
     config_task.offset = []
 
     imdb_names_train = [imdb_dir + '/' + dataset_names[i] + '_train.json' for i in range(len(dataset_names))]
-    imdb_names_val   = [imdb_dir + '/' + dataset_names[i] + '_val.json' for i in range(len(dataset_names))]
+    imdb_names_val   = [imdb_dir + '/' + dataset_names[i] + '_test.json' for i in range(len(dataset_names))]
     imdb_names = [imdb_names_train, imdb_names_val]
 
     with open(data_dir + 'decathlon_mean_std.pickle', 'rb') as handle:

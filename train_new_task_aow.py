@@ -132,6 +132,10 @@ results = np.zeros((4,start_epoch+args.nb_epochs,len(args.num_classes)))
 all_tasks = range(len(args.dataset))
 np.random.seed(1993)
 
+path = args.ckpdir+'/'+'-'.join(args.dataset)+'_'+'_'.join([str(config_task.att_factor), res, str(args.step1), str(args.step2), str(args.nb_epochs)])
+net.load_state_dict(torch.load(path+'_ckpt.pth'))
+print('LOAD SUCCESSFULLY')
+
 net.cuda()
 cudnn.benchmark = True
 
