@@ -265,7 +265,7 @@ class ResNet(nn.Module):
         if stride != 1 or self.in_planes != planes * block.expansion:
             shortcut = 1
         layers = []
-        layers.append(block(self.in_planes, planes, stride, nb_tasks=nb_tasks, shortcut=0))
+        layers.append(block(self.in_planes, planes, stride, nb_tasks=nb_tasks, shortcut=shortcut))
         self.in_planes = planes * block.expansion
         for i in range(1, nblocks):
             layers.append(block(self.in_planes, planes, nb_tasks=nb_tasks))
