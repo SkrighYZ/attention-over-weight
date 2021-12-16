@@ -143,7 +143,7 @@ cudnn.benchmark = True
 
 # Freeze convolution layers
 for name, m in net.named_modules():
-    if isinstance(m, MaskedConv2d):
+    if isinstance(m, (MaskedConv2d, nn.Conv2d)):
         m.weight.requires_grad = False
 
 
@@ -175,6 +175,6 @@ for epoch in range(start_epoch, start_epoch+args.nb_epochs):
     for i in all_tasks:
         results[2:4,epoch,i] = [test_loss[i],test_acc[i]]
     res = 'res' if config_task.res else 'nores'
-    np.save(args.svdir+'-'.join(args.dataset)+'_'+'_'.join([str(config_task.att_factor), res, str(args.step1), str(args.step2), str(args.nb_epochs)]), results)
+    np.save(args.svdir+'-'.join(args.dataset)+'_'+'_'.join([config_task.mode, str(config_task.att_factor), res, str(args.step1), str(args.step2), str(args.nb_epochs)]), results)
     print('Epoch lasted {0}'.format(time.time()-st_time))
 

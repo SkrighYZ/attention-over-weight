@@ -140,7 +140,7 @@ def test(epoch, loaders, all_tasks, net, best_acc, args, optimizer):
             'epoch': epoch
         }
         res = 'res' if config_task.res else 'nores'
-        path = args.ckpdir+'/'+'-'.join(args.dataset)+'_'+'_'.join([str(config_task.att_factor), res, str(args.step1), str(args.step2), str(args.nb_epochs)])
+        path = args.ckpdir+'/'+'-'.join(args.dataset)+'_'+'_'.join([config_task.mode, str(config_task.att_factor), res, str(args.step1), str(args.step2), str(args.nb_epochs)])
         torch.save(net.state_dict(), path+'_ckpt.pth')
         pickle.dump(acc, open(path+'_acc.pkl', 'wb'))
         best_acc = acc['acc']
