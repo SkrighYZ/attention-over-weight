@@ -63,10 +63,10 @@ class MaskedConv2d(nn.Module):
         w_channels = torch.numel(self.weight)
 
         if config_task.mode == 'channel':
-            self.attn_dim = self.in_channels
+            self.attn_dim = self.out_channels // config_task.att_factor  # can try different values later
             self.attns = nn.ModuleList([AttnOverChannel(self.in_channels, self.out_channels, self.kernel_size[0], self.attn_dim) for i in range(nb_tasks)])
         elif config_task.mode == 'individual':
-            self.attn_dim = self.out_channels  // config_task.att_factor  # can try different values later
+            self.attn_dim = self.out_channels // config_task.att_factor  # can try different values later
             self.attns = nn.ModuleList([AttnOverWeight(self.in_channels, w_channels, self.attn_dim) for i in range(nb_tasks)])
 
     def forward(self, input):
