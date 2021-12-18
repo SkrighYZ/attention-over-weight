@@ -20,6 +20,9 @@ python train_new_task_aow.py --dataset daimlerpedcls --wd 5e-4 --source ../model
 
 
 
+#########################
+python train_new_task_aow.py --dataset cifar100 --wd 1e-4 --source ../models/pretrained/imnet.t7 --expdir ../results --batch_size 128 --att_factor 2 --res 
+
 
 #########################
 #python train_new_task_aow.py --dataset cifar100 --wd 1e-4 --source ../models/pretrained/imnet.t7 --expdir ../results --batch_size 128 --att_factor 2 --mode original
@@ -35,7 +38,4 @@ python train_new_task_aow.py --dataset ucf101 --wd 5e-4 --source ../models/pretr
 python train_new_task_aow.py --dataset daimlerpedcls --wd 5e-4 --source ../models/pretrained/imnet.t7 --expdir ../results --batch_size 128 --att_factor 2 --mode original
 
 
-
-#########################
-python train_new_task_aow.py --dataset cifar100 --wd 1e-4 --source ../models/pretrained/imnet.t7 --expdir ../results --batch_size 128 --att_factor 2 --res 
 
