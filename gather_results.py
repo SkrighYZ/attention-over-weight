@@ -13,12 +13,13 @@ datasets = ['aircraft',
 'svhn',
 'ucf101']
 
-accs = {'imagenet': 60.32}
 
+save_dir = '../results/'
 results_dir = save_dir + '/checkpoints/'
 model_appendix = '_channel_2_nores_80_100_120'
-save_dir = '../results/'
 
+
+accs = {'imagenet': 60.32}
 for dataset in datasets:
 	acc_file = pickle.load(open(results_dir+dataset+model_appendix+'_acc.pkl', 'rb'))
 	acc = acc_file['acc']
