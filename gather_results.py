@@ -30,4 +30,4 @@ print(vdd_score)
 
 
 accs['vdd_score'] = vdd_score
-json.dump((open(save_dir+'results'+model_appendix+'.json', 'w')))
+json.dump(accs, (open(save_dir+'results'+model_appendix+'.json', 'w')))
