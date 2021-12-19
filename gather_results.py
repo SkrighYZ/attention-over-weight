@@ -1,6 +1,7 @@
 import pickle
 import attention_model_utils
 import json
+import sys
 
 
 datasets = ['aircraft',
@@ -16,7 +17,7 @@ datasets = ['aircraft',
 
 save_dir = '../results/'
 results_dir = save_dir + '/checkpoints/'
-model_appendix = '_channel_2_nores_80_100_120'
+model_appendix = sys.argv[1]
 
 
 accs = {'imagenet': 60.32}
