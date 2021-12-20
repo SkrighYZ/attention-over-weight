@@ -1,7 +1,4 @@
-# models.py
-# created by Sylvestre-Alvise Rebuffi [srebuffi@robots.ox.ac.uk]
-# Copyright The University of Oxford, 2017-2020
-# This code is made available under the Apache v2.0 licence, see LICENSE.txt for details
+# Code adapted from https://github.com/srebuffi/residual_adapters
 
 import torch
 import torch.nn as nn
@@ -196,7 +193,7 @@ class AttnOverWeight(nn.Module):
         weighted_w = self.fc_o(attn_out).squeeze(2)         # (N, w_channels)
         expanded_w = w.reshape(1, -1).repeat(batch_size, 1) # (N, w_channels)
 
-        masked_w = expanded_w + self.gamma * weighted_w        # (N, w_channels)
+        masked_w = (1 - torch.sigmoid(self.gamma)) + torch.sigmoid(self.gamma) * weighted_w        # (N, w_channels)
 
         return masked_w
 

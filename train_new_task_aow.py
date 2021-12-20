@@ -1,7 +1,4 @@
-# train_new_task_adapters.py
-# created by Sylvestre-Alvise Rebuffi [srebuffi@robots.ox.ac.uk]
-# Copyright The University of Oxford, 2017-2020
-# This code is made available under the Apache v2.0 licence, see LICENSE.txt for details
+# Code adapted from https://github.com/srebuffi/residual_adapters
 
 import torch
 import torch.nn as nn
@@ -23,7 +20,6 @@ from torch.autograd import Variable
 import imdbfolder_coco as imdbfolder
 import config_task
 import utils_pytorch
-import sgd
 
 parser = argparse.ArgumentParser(description='PyTorch Attention Weight Masks')
 parser.add_argument('--dataset', default='cifar100', nargs='+', help='Task(s) to be trained')
