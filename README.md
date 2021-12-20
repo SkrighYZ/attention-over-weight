@@ -12,9 +12,14 @@ We added our models in ``attention_model.py`` and training script in ``train_new
 
 We use the pretrained ImageNet weights from the original repo, which can only be loaded in Python 2.7.
 
-### Launching the code
+
+### Downloading Data
 First download the data with ``download_data.sh /path/to/save/data/``. Please copy ``decathlon_mean_std.pickle`` to the data folder. 
 
+Then extract   ``labels_test.zip`` into the annotation folder.
+
+
+### Launching the Code
 To train our ``channel-wise attention model with direct masking`` and attention dimension ``C/4``:
 
 ``python train_new_task_aow.py --dataset [DATASET] --wd 1e-4 --source [PRETRAINED WEIGHTS] --expdir [RESULTS DIR] --batch_size 128 --att_factor 4 ``
